@@ -89,6 +89,7 @@ struct WindowAccessor: NSViewRepresentable {
 /// View-menu items, also used as the right-click menu so they stay reachable in clean mode.
 struct ViewMenuItems: View {
     @Bindable var settings: AppSettings
+    let meters: MeterEngine
 
     var body: some View {
         Toggle("Clean Mode", isOn: $settings.clean)
@@ -119,6 +120,18 @@ struct ViewMenuItems: View {
                 Text("0 VU = −14 dBFS").tag(Float(-14))
             }
             Toggle("Mono Sum", isOn: $settings.prefs.vuMono)
+        }
+        Menu("Loudness") {
+            Picker("Target", selection: $settings.prefs.lufsTarget) {
+                Text("−23 LUFS (EBU R128)").tag(-23.0)
+                Text("−24 LUFS (ATSC A/85)").tag(-24.0)
+                Text("−16 LUFS").tag(-16.0)
+                Text("−14 LUFS (streaming)").tag(-14.0)
+            }
+            Toggle("Show Peaks", isOn: $settings.prefs.showPeaks)
+            Divider()
+            Toggle("Pause", isOn: $settings.loudnessHeld)
+            Button("Reset") { meters.resetLoudness() }
         }
     }
 }

@@ -3,11 +3,11 @@ import Testing
 @testable import Scope
 
 /// Builds a Float32 audio sample buffer; `channels` is one array per channel.
-private func makeBuffer(_ channels: [[Float]], interleaved: Bool) throws -> CMSampleBuffer {
+private func makeBuffer(_ channels: [[Float]], interleaved: Bool, rate: Double = 48_000) throws -> CMSampleBuffer {
     let count = channels.count, frames = channels[0].count
     let bytesPerFrame = UInt32(4 * (interleaved ? count : 1))
     var asbd = AudioStreamBasicDescription(
-        mSampleRate: 48_000, mFormatID: kAudioFormatLinearPCM,
+        mSampleRate: rate, mFormatID: kAudioFormatLinearPCM,
         mFormatFlags: kAudioFormatFlagIsFloat | kAudioFormatFlagIsPacked
             | (interleaved ? 0 : kAudioFormatFlagIsNonInterleaved),
         mBytesPerPacket: bytesPerFrame, mFramesPerPacket: 1, mBytesPerFrame: bytesPerFrame,
@@ -18,7 +18,7 @@ private func makeBuffer(_ channels: [[Float]], interleaved: Bool) throws -> CMSa
         magicCookie: nil, extensions: nil, formatDescriptionOut: &format) == noErr)
 
     var timing = CMSampleTimingInfo(
-        duration: CMTime(value: 1, timescale: 48_000), presentationTimeStamp: .zero, decodeTimeStamp: .invalid)
+        duration: CMTime(value: 1, timescale: CMTimeScale(rate)), presentationTimeStamp: .zero, decodeTimeStamp: .invalid)
     var buffer: CMSampleBuffer?
     try #require(CMSampleBufferCreate(
         allocator: nil, dataBuffer: nil, dataReady: false, makeDataReadyCallback: nil, refcon: nil,
@@ -72,6 +72,12 @@ private func extracted(_ buffer: CMSampleBuffer) -> ([Float], [Float]) {
     let (outL, outR) = extracted(try makeBuffer([l], interleaved: true))
     #expect(outL == l)
     #expect(outR == l)
+}
+
+@Test func rejectsOtherSampleRates() throws {
+    let x = SampleExtractor()
+    #expect(x.extract(try makeBuffer([l, r], interleaved: false, rate: 44_100)) == 0)
+    #expect(x.rejectedSampleRate == 44_100)
 }
 
 @Test func dBFSValues() {

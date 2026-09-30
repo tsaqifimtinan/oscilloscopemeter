@@ -48,7 +48,7 @@ final class AudioCapture {
             config.minimumFrameInterval = CMTime(value: 1, timescale: 1)
 
             let output = StreamOutput(feed: feed) { [weak self] message in
-                Task { @MainActor in self?.didStop(message) }
+                Task { @MainActor in await self?.didStop(message) }
             }
             let stream = SCStream(
                 filter: SCContentFilter(display: display, excludingWindows: []),
@@ -76,11 +76,13 @@ final class AudioCapture {
         state = .granted
     }
 
-    private func didStop(_ message: String) {
-        stream = nil
+    private func didStop(_ message: String) async {
+        let stream = self.stream
+        self.stream = nil
         output = nil
         meters.stop()
         state = .error(message)
+        try? await stream?.stopCapture()  // no-op if the stream already stopped itself
     }
 
     enum CaptureError: LocalizedError {
@@ -90,12 +92,13 @@ final class AudioCapture {
 }
 
 /// Receives sample buffers on `queue` and copies them into the feed. Nothing else happens here:
-/// no allocation, no logging, no analysis.
+/// no allocation, no logging, no analysis (apart from the one-time unsupported-rate error).
 final class StreamOutput: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sendable {
     let queue = DispatchQueue(label: "scope.capture", qos: .userInteractive)
     private let onStop: @Sendable (String) -> Void
     private let extractor = SampleExtractor()  // touched only on `queue`
     private let feed: StereoFeed
+    private var reportedRate = false  // touched only on `queue`
 
     init(feed: StereoFeed, onStop: @escaping @Sendable (String) -> Void) {
         self.feed = feed
@@ -105,6 +108,11 @@ final class StreamOutput: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked
     func stream(_ stream: SCStream, didOutputSampleBuffer buffer: CMSampleBuffer, of type: SCStreamOutputType) {
         guard type == .audio else { return }
         let n = extractor.extract(buffer)
+        if n == 0, let rate = extractor.rejectedSampleRate, !reportedRate {
+            // Error path, once: never silently run 48 kHz loudness coefficients on another rate.
+            reportedRate = true
+            onStop("Unsupported sample rate \(Int(rate)) Hz; Scope needs 48 kHz.")
+        }
         guard n > 0 else { return }
         feed.write(l: extractor.left, r: extractor.right, count: n)
     }

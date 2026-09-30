@@ -3,9 +3,10 @@ import SwiftUI
 /// Arranges the enabled panels. One TimelineView drives every panel's redraw.
 struct LayoutView: View {
     let capture: AudioCapture
-    let prefs: Prefs
+    @Bindable var settings: AppSettings
 
     var body: some View {
+        let prefs = settings.prefs
         let background = prefs.background.color
         TimelineView(.animation) { timeline in
             let meters = capture.meters.snapshot
@@ -26,6 +27,12 @@ struct LayoutView: View {
                 if prefs.panels.contains(.goniometer) {
                     GoniometerView(feed: capture.feed, gain: prefs.scope.gain, background: background, date: timeline.date)
                         .aspectRatio(1, contentMode: .fit)
+                }
+                if prefs.panels.contains(.lufs) {
+                    LoudnessPanelView(snapshot: meters, target: prefs.lufsTarget, showPeaks: prefs.showPeaks,
+                                      showButtons: !settings.clean, held: $settings.loudnessHeld,
+                                      onReset: capture.meters.resetLoudness)
+                        .frame(width: 230)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

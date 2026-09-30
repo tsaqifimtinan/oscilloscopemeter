@@ -2,7 +2,7 @@ import Foundation
 import Observation
 
 enum Panel: String, Codable, CaseIterable {
-    case scope = "Scope", goniometer = "Goniometer", vu = "VU"
+    case scope = "Scope", goniometer = "Goniometer", vu = "VU", lufs = "LUFS"
 }
 
 enum BackgroundMode: String, Codable, CaseIterable {
@@ -18,6 +18,8 @@ struct Prefs: Codable, Equatable {
     var lockAspect = false
     var vuReference: Float = -18  // dBFS RMS that reads 0 VU
     var vuMono = false
+    var lufsTarget = -23.0
+    var showPeaks = false
 }
 
 /// Shared UI state. `prefs` saves itself to UserDefaults on every change.
@@ -26,6 +28,8 @@ final class AppSettings {
     static let key = "prefs"
 
     var clean = false
+    /// Loudness hold (Pause); not persisted.
+    var loudnessHeld = false
     var prefs: Prefs {
         didSet { if prefs != oldValue { save() } }
     }

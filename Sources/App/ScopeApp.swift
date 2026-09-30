@@ -15,7 +15,7 @@ struct ScopeApp: App {
         }
         .defaultSize(width: 900, height: 360)
         .commands {
-            CommandGroup(after: .toolbar) { ViewMenuItems(settings: settings) }
+            CommandGroup(after: .toolbar) { ViewMenuItems(settings: settings, meters: capture.meters) }
         }
     }
 }
@@ -26,7 +26,7 @@ struct ContentView: View {
     @State private var keyMonitor: Any?
 
     var body: some View {
-        LayoutView(capture: capture, prefs: settings.prefs)
+        LayoutView(capture: capture, settings: settings)
             .ignoresSafeArea()
             .overlay(alignment: .topLeading) { if !settings.clean { levels.padding(10) } }
             .overlay(alignment: .topTrailing) { if !settings.clean { captureControls.padding(10) } }
@@ -35,13 +35,14 @@ struct ContentView: View {
             }
             .gesture(WindowDragGesture(), isEnabled: settings.clean)
             .allowsWindowActivationEvents(true)
-            .contextMenu { ViewMenuItems(settings: settings) }
+            .contextMenu { ViewMenuItems(settings: settings, meters: capture.meters) }
             .background(WindowAccessor { window in
                 settings.chrome.attach(window)
                 applyChrome()
             })
             .onChange(of: settings.clean) { applyChrome() }
             .onChange(of: settings.prefs) { applyChrome() }
+            .onChange(of: settings.loudnessHeld) { capture.meters.setLoudnessHeld(settings.loudnessHeld) }
             .onAppear { installKeyMonitor() }
             .onDisappear { keyMonitor.map(NSEvent.removeMonitor) }
             .containerBackground(settings.prefs.background.color, for: .window)

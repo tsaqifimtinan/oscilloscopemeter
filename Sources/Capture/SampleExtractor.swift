@@ -9,6 +9,8 @@ final class SampleExtractor: @unchecked Sendable {
     let right: UnsafeMutablePointer<Float>
     private let interleaved: UnsafeMutablePointer<Float>
     private let abl: UnsafeMutableAudioBufferListPointer
+    /// Rate of the last buffer rejected for not being 48 kHz (the K-weighting coefficients need 48 kHz).
+    private(set) var rejectedSampleRate: Double?
 
     init(capacity: Int = 16_384) {
         self.capacity = capacity
@@ -34,6 +36,10 @@ final class SampleExtractor: @unchecked Sendable {
               asbd.mFormatFlags & kAudioFormatFlagIsFloat != 0,
               asbd.mBitsPerChannel == 32
         else { return 0 }
+        guard asbd.mSampleRate == 48_000 else {
+            rejectedSampleRate = asbd.mSampleRate
+            return 0
+        }
         // ponytail: 1–2 channels only; SCStream is configured for stereo. Surround would need a downmix.
         let channels = Int(asbd.mChannelsPerFrame)
         let frames = min(buffer.numSamples, capacity)
