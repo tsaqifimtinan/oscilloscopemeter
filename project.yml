@@ -1,0 +1,39 @@
+name: Scope
+options:
+  bundleIdPrefix: com.tsaqif
+  deploymentTarget:
+    macOS: "15.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    ENABLE_HARDENED_RUNTIME: NO
+targets:
+  Scope:
+    type: application
+    platform: macOS
+    sources: [Sources]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tsaqif.scope
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Scope
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.music
+  ScopeTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [Tests]
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: Scope
+schemes:
+  Scope:
+    build:
+      targets:
+        Scope: all
+        ScopeTests: [test]
+    test:
+      targets: [ScopeTests]
