@@ -10,9 +10,9 @@ struct ScopeSettings {
     var mode = TriggerMode.auto
 }
 
-/// Triggered single-trace scope over the most recent samples in `ring`.
+/// Triggered single-trace scope over the mono mix of the most recent samples in `feed`.
 struct ScopeView: View {
-    let ring: SampleRing
+    let feed: StereoFeed
     let settings: ScopeSettings
     @State private var buffers = TraceBuffers()
 
@@ -22,7 +22,7 @@ struct ScopeView: View {
         TimelineView(.animation) { timeline in
             Canvas { context, size in
                 _ = timeline.date  // redraw every display frame
-                context.stroke(buffers.trace(ring: ring, settings: settings, size: size),
+                context.stroke(buffers.trace(feed: feed, settings: settings, size: size),
                                with: .color(Self.traceColor), lineWidth: 1)
             }
         }
@@ -33,19 +33,25 @@ struct ScopeView: View {
 /// Preallocated snapshot + displayed frame, so drawing doesn't allocate sample storage per frame.
 private final class TraceBuffers {
     private static let maxWindow = ScopeSettings.windows.max()!
+    private let snapL = UnsafeMutablePointer<Float>.allocate(capacity: 2 * maxWindow)
+    private let snapR = UnsafeMutablePointer<Float>.allocate(capacity: 2 * maxWindow)
     private let snapshot = UnsafeMutablePointer<Float>.allocate(capacity: 2 * maxWindow)
     private let frame = UnsafeMutablePointer<Float>.allocate(capacity: maxWindow)
 
     init() { frame.initialize(repeating: 0, count: Self.maxWindow) }
 
     deinit {
+        snapL.deallocate()
+        snapR.deallocate()
         snapshot.deallocate()
         frame.deallocate()
     }
 
-    func trace(ring: SampleRing, settings: ScopeSettings, size: CGSize) -> Path {
+    func trace(feed: StereoFeed, settings: ScopeSettings, size: CGSize) -> Path {
         let w = settings.window
-        ring.latest(2 * w, into: snapshot)
+        feed.latest(2 * w, l: snapL, r: snapR)
+        var half: Float = 0.5
+        vDSP_vasm(snapL, 1, snapR, 1, &half, snapshot, 1, vDSP_Length(2 * w))
         let x = UnsafeBufferPointer(start: snapshot, count: 2 * w)
         if let start = frameStart(x, window: w, level: settings.triggerLevel,
                                   edge: settings.edge, mode: settings.mode) {

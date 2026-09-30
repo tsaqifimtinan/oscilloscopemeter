@@ -17,7 +17,7 @@ struct ContentView: View {
     @State private var settings = ScopeSettings()
 
     var body: some View {
-        ScopeView(ring: capture.ring, settings: settings)
+        ScopeView(feed: capture.feed, settings: settings)
             .ignoresSafeArea()
             .overlay(alignment: .topLeading) { levels.padding(10) }
             .overlay(alignment: .topTrailing) { captureControls.padding(10) }
@@ -28,11 +28,19 @@ struct ContentView: View {
 
     private var levels: some View {
         TimelineView(.periodic(from: .now, by: 0.1)) { _ in
-            let (l, r) = capture.levels
-            Text(String(format: "L %6.1f  R %6.1f dBFS", l, r))
+            Text(readout(capture.meters.snapshot))
                 .font(.system(.caption, design: .monospaced))
                 .foregroundStyle(.secondary)
         }
+    }
+
+    private func readout(_ m: MeterSnapshot) -> String {
+        let text = String(format: "L %6.1f  R %6.1f dBFS", m.rmsL, m.rmsR)
+        #if DEBUG
+        return text + "  · overruns \(m.overruns)"
+        #else
+        return text
+        #endif
     }
 
     private var captureControls: some View {
