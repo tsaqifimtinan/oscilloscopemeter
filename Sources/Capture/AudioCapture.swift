@@ -13,6 +13,8 @@ final class AudioCapture {
 
     private(set) var state: State
     private(set) var busy = false
+    /// Mono mix of the captured audio; persists across start/stop.
+    let ring = SampleRing()
     private var stream: SCStream?
     private var output: StreamOutput?
 
@@ -48,7 +50,7 @@ final class AudioCapture {
             config.height = 2
             config.minimumFrameInterval = CMTime(value: 1, timescale: 1)
 
-            let output = StreamOutput { [weak self] message in
+            let output = StreamOutput(ring: ring) { [weak self] message in
                 Task { @MainActor in self?.didStop(message) }
             }
             let stream = SCStream(
@@ -93,8 +95,9 @@ final class StreamOutput: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked
     let queue = DispatchQueue(label: "scope.capture", qos: .userInteractive)
     private let onStop: @Sendable (String) -> Void
     private let extractor = SampleExtractor()
+    private let ring: SampleRing
 
-    // ponytail: M1 level meter only; replaced by the ring buffer + analysis queue in M2.
+    // ponytail: plain 100 ms RMS for the readout; proper meters (ballistics, peak hold) are M5.
     private static let window = 4_800  // 100 ms @ 48 kHz
     private var sumL: Float = 0
     private var sumR: Float = 0
@@ -102,7 +105,8 @@ final class StreamOutput: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked
     private let packedLevels = Atomic<UInt64>(0)  // L/R dBFS float bits
     private let publishedAt = Atomic<UInt64>(0)   // uptime ns
 
-    init(onStop: @escaping @Sendable (String) -> Void) {
+    init(ring: SampleRing, onStop: @escaping @Sendable (String) -> Void) {
+        self.ring = ring
         self.onStop = onStop
     }
 
@@ -113,6 +117,12 @@ final class StreamOutput: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked
         var l: Float = 0, r: Float = 0
         vDSP_svesq(extractor.left, 1, &l, vDSP_Length(n))
         vDSP_svesq(extractor.right, 1, &r, vDSP_Length(n))
+
+        // Mono mix in place (levels above already used the separate channels).
+        var half: Float = 0.5
+        vDSP_vasm(extractor.left, 1, extractor.right, 1, &half, extractor.left, 1, vDSP_Length(n))
+        ring.write(extractor.left, count: n)
+
         sumL += l
         sumR += r
         count += n
