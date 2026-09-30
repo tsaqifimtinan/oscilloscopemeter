@@ -2,7 +2,7 @@ import Foundation
 import Observation
 
 enum Panel: String, Codable, CaseIterable {
-    case scope = "Scope", goniometer = "Goniometer"
+    case scope = "Scope", goniometer = "Goniometer", vu = "VU"
 }
 
 enum BackgroundMode: String, Codable, CaseIterable {
@@ -16,6 +16,8 @@ struct Prefs: Codable, Equatable {
     var background = BackgroundMode.black
     var keepOnTop = false
     var lockAspect = false
+    var vuReference: Float = -18  // dBFS RMS that reads 0 VU
+    var vuMono = false
 }
 
 /// Shared UI state. `prefs` saves itself to UserDefaults on every change.

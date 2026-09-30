@@ -111,5 +111,14 @@ struct ViewMenuItems: View {
             Toggle("Lock Aspect 16:9", isOn: $settings.prefs.lockAspect)
         }
         Toggle("Keep on Top", isOn: $settings.prefs.keepOnTop)
+        Divider()
+        Menu("VU Meter") {
+            Picker("Reference", selection: $settings.prefs.vuReference) {
+                Text("0 VU = −18 dBFS").tag(Float(-18))
+                Text("0 VU = −20 dBFS (EBU)").tag(Float(-20))
+                Text("0 VU = −14 dBFS").tag(Float(-14))
+            }
+            Toggle("Mono Sum", isOn: $settings.prefs.vuMono)
+        }
     }
 }
