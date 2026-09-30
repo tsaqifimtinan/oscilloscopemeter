@@ -1,7 +1,7 @@
 import Accelerate
 import SwiftUI
 
-struct ScopeSettings {
+struct ScopeSettings: Codable, Equatable {
     static let windows = [512, 1024, 2048, 4096, 8192]
     var window = 1024
     var gain: Float = 1
@@ -14,20 +14,22 @@ struct ScopeSettings {
 struct ScopeView: View {
     let feed: StereoFeed
     let settings: ScopeSettings
+    let background: Color
+    let date: Date  // changes every display frame to force a redraw
     @State private var buffers = TraceBuffers()
 
-    private static let traceColor = Color(red: 0.66, green: 0.75, blue: 0.92)
-
     var body: some View {
-        TimelineView(.animation) { timeline in
-            Canvas { context, size in
-                _ = timeline.date  // redraw every display frame
-                context.stroke(buffers.trace(feed: feed, settings: settings, size: size),
-                               with: .color(Self.traceColor), lineWidth: 1)
-            }
+        Canvas { context, size in
+            _ = date
+            context.stroke(buffers.trace(feed: feed, settings: settings, size: size),
+                           with: .color(.trace), lineWidth: 1)
         }
-        .background(.black)
+        .background(background)
     }
+}
+
+extension Color {
+    static let trace = Color(red: 0.66, green: 0.75, blue: 0.92)
 }
 
 /// Preallocated snapshot + displayed frame, so drawing doesn't allocate sample storage per frame.

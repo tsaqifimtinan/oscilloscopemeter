@@ -3,27 +3,68 @@ import SwiftUI
 @main
 struct ScopeApp: App {
     @State private var capture = AudioCapture()
+    @State private var settings = AppSettings()
+    /// Held for the app's lifetime so rendering and audio processing are never throttled
+    /// when the window is in the background or partly covered (e.g. behind OBS).
+    private let activity = ProcessInfo.processInfo.beginActivity(
+        options: [.userInitiated, .latencyCritical], reason: "Realtime audio visualization")
 
     var body: some Scene {
         WindowGroup("Scope") {
-            ContentView(capture: capture)
+            ContentView(capture: capture, settings: settings)
         }
         .defaultSize(width: 900, height: 360)
+        .commands {
+            CommandGroup(after: .toolbar) { ViewMenuItems(settings: settings) }
+        }
     }
 }
 
 struct ContentView: View {
     let capture: AudioCapture
-    @State private var settings = ScopeSettings()
+    @Bindable var settings: AppSettings
+    @State private var keyMonitor: Any?
 
     var body: some View {
-        ScopeView(feed: capture.feed, settings: settings)
+        LayoutView(capture: capture, prefs: settings.prefs)
             .ignoresSafeArea()
-            .overlay(alignment: .topLeading) { levels.padding(10) }
-            .overlay(alignment: .topTrailing) { captureControls.padding(10) }
-            .overlay(alignment: .bottom) { scopeControls }
-            .frame(minWidth: 640, minHeight: 240)
+            .overlay(alignment: .topLeading) { if !settings.clean { levels.padding(10) } }
+            .overlay(alignment: .topTrailing) { if !settings.clean { captureControls.padding(10) } }
+            .overlay(alignment: .bottom) {
+                if !settings.clean && settings.prefs.panels.contains(.scope) { scopeControls }
+            }
+            .gesture(WindowDragGesture(), isEnabled: settings.clean)
+            .allowsWindowActivationEvents(true)
+            .contextMenu { ViewMenuItems(settings: settings) }
+            .background(WindowAccessor { window in
+                settings.chrome.attach(window)
+                applyChrome()
+            })
+            .onChange(of: settings.clean) { applyChrome() }
+            .onChange(of: settings.prefs) { applyChrome() }
+            .onAppear { installKeyMonitor() }
+            .onDisappear { keyMonitor.map(NSEvent.removeMonitor) }
+            .containerBackground(settings.prefs.background.color, for: .window)
+            .frame(minWidth: 320, minHeight: 180)
             .preferredColorScheme(.dark)
+    }
+
+    private func applyChrome() {
+        settings.chrome.apply(clean: settings.clean, prefs: settings.prefs)
+    }
+
+    /// App-local keys (only while Scope is focused).
+    private func installKeyMonitor() {
+        guard keyMonitor == nil else { return }
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [settings] event in
+            let isEscape = event.keyCode == 53
+            let handled = MainActor.assumeIsolated {
+                guard isEscape, settings.clean else { return false }
+                settings.clean = false
+                return true
+            }
+            return handled ? nil : event
+        }
     }
 
     private var levels: some View {
@@ -62,23 +103,23 @@ struct ContentView: View {
 
     private var scopeControls: some View {
         HStack(spacing: 16) {
-            Picker("Window", selection: $settings.window) {
+            Picker("Window", selection: $settings.prefs.scope.window) {
                 ForEach(ScopeSettings.windows, id: \.self) { n in
                     Text(String(format: "%d (%.1f ms)", n, Double(n) / 48)).tag(n)
                 }
             }
             .fixedSize()
-            Slider(value: $settings.gain, in: 0.25...8) {
-                Text(String(format: "Gain %.2f×", settings.gain)).monospacedDigit()
+            Slider(value: $settings.prefs.scope.gain, in: 0.25...8) {
+                Text(String(format: "Gain %.2f×", settings.prefs.scope.gain)).monospacedDigit()
             }
-            Slider(value: $settings.triggerLevel, in: -1...1) {
-                Text(String(format: "Trig %+.2f", settings.triggerLevel)).monospacedDigit()
+            Slider(value: $settings.prefs.scope.triggerLevel, in: -1...1) {
+                Text(String(format: "Trig %+.2f", settings.prefs.scope.triggerLevel)).monospacedDigit()
             }
-            Picker("Edge", selection: $settings.edge) {
+            Picker("Edge", selection: $settings.prefs.scope.edge) {
                 ForEach(TriggerEdge.allCases, id: \.self) { Text($0.rawValue) }
             }
             .pickerStyle(.segmented).labelsHidden().fixedSize()
-            Picker("Mode", selection: $settings.mode) {
+            Picker("Mode", selection: $settings.prefs.scope.mode) {
                 ForEach(TriggerMode.allCases, id: \.self) { Text($0.rawValue) }
             }
             .pickerStyle(.segmented).labelsHidden().fixedSize()

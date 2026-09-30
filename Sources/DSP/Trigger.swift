@@ -1,8 +1,8 @@
-enum TriggerEdge: String, CaseIterable {
+enum TriggerEdge: String, CaseIterable, Codable {
     case rising = "Rising", falling = "Falling"
 }
 
-enum TriggerMode: String, CaseIterable {
+enum TriggerMode: String, CaseIterable, Codable {
     case auto = "Auto", normal = "Normal"
 }
 
