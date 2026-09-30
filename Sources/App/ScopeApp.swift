@@ -54,15 +54,16 @@ struct ContentView: View {
         settings.chrome.apply(clean: settings.clean, prefs: settings.prefs)
     }
 
-    /// App-local keys (only while Scope is focused).
+    /// App-local keys (only while Scope is focused); plain keys only, so menu shortcuts pass through.
     private func installKeyMonitor() {
         guard keyMonitor == nil else { return }
+        let meters = capture.meters
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [settings] event in
+            guard event.modifierFlags.intersection([.command, .control, .option]).isEmpty else { return event }
+            let characters = event.charactersIgnoringModifiers ?? ""
             let isEscape = event.keyCode == 53
             let handled = MainActor.assumeIsolated {
-                guard isEscape, settings.clean else { return false }
-                settings.clean = false
-                return true
+                settings.handleKey(characters, isEscape: isEscape, resetLoudness: meters.resetLoudness)
             }
             return handled ? nil : event
         }

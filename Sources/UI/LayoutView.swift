@@ -8,7 +8,9 @@ struct LayoutView: View {
     var body: some View {
         let prefs = settings.prefs
         let background = prefs.background.color
-        TimelineView(.animation) { timeline in
+        // ponytail: 60 Hz cap. SwiftUI's per-frame overhead across all panels is the cost (not DSP);
+        // OBS records at ≤60 fps anyway. The Metal renderer (PLAN M4) is the path to 120 Hz for less CPU.
+        TimelineView(.animation(minimumInterval: 1 / 60)) { timeline in
             let meters = capture.meters.snapshot
             let scope = prefs.panels.contains(.scope), vu = prefs.panels.contains(.vu)
             HStack(spacing: 0) {

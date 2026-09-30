@@ -94,6 +94,11 @@ struct ViewMenuItems: View {
     var body: some View {
         Toggle("Clean Mode", isOn: $settings.clean)
             .keyboardShortcut("h", modifiers: [.command, .shift])
+        Menu("Layout") {
+            ForEach(Array(LayoutPreset.allCases.enumerated()), id: \.element) { i, layout in
+                Button("\(layout.rawValue)  (\(i + 1))") { settings.apply(layout) }
+            }
+        }
         Menu("Panels") {
             ForEach(Panel.allCases, id: \.self) { panel in
                 Toggle(panel.rawValue, isOn: Binding(
@@ -131,7 +136,7 @@ struct ViewMenuItems: View {
             Toggle("Show Peaks", isOn: $settings.prefs.showPeaks)
             Divider()
             Toggle("Pause", isOn: $settings.loudnessHeld)
-            Button("Reset") { meters.resetLoudness() }
+            Button("Reset  (R)") { meters.resetLoudness() }
         }
     }
 }

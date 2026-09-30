@@ -29,3 +29,24 @@ private func freshDefaults() -> UserDefaults {
     #expect(settings.prefs.lockAspect == false)
     #expect(settings.prefs.panels == [.scope])
 }
+
+@MainActor @Test func hotkeysPickLayoutsAndToggleClean() {
+    let settings = AppSettings(defaults: freshDefaults())
+    settings.toggle(.goniometer)
+    #expect(settings.handleKey("4", isEscape: false, resetLoudness: {}))
+    #expect(settings.prefs.panels == [.scope, .vu, .lufs, .goniometer])  // goniometer survives presets
+    #expect(settings.handleKey("5", isEscape: false, resetLoudness: {}))
+    #expect(settings.prefs.panels == [.vu, .lufs, .goniometer])
+
+    #expect(!settings.handleKey("", isEscape: true, resetLoudness: {}))  // Esc only matters in clean mode
+    #expect(settings.handleKey("H", isEscape: false, resetLoudness: {}))
+    #expect(settings.clean)
+    #expect(settings.handleKey("", isEscape: true, resetLoudness: {}))
+    #expect(!settings.clean)
+
+    var resets = 0
+    #expect(settings.handleKey("r", isEscape: false, resetLoudness: { resets += 1 }))
+    #expect(resets == 1)
+    #expect(!settings.handleKey("6", isEscape: false, resetLoudness: {}))
+    #expect(!settings.handleKey("x", isEscape: false, resetLoudness: {}))
+}

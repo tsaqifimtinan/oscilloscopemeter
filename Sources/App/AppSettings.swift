@@ -5,6 +5,22 @@ enum Panel: String, Codable, CaseIterable {
     case scope = "Scope", goniometer = "Goniometer", vu = "VU", lufs = "LUFS"
 }
 
+/// Layout presets set the panel toggles; the goniometer toggle is left as it is.
+enum LayoutPreset: String, CaseIterable {
+    case scope = "Scope Only", scopeVU = "Scope + VU", scopeLUFS = "Scope + LUFS",
+         scopeVULUFS = "Scope + VU + LUFS", meters = "Meters Only"
+
+    var panels: Set<Panel> {
+        switch self {
+        case .scope: [.scope]
+        case .scopeVU: [.scope, .vu]
+        case .scopeLUFS: [.scope, .lufs]
+        case .scopeVULUFS: [.scope, .vu, .lufs]
+        case .meters: [.vu, .lufs]
+        }
+    }
+}
+
 enum BackgroundMode: String, Codable, CaseIterable {
     case black = "Black", chroma = "Chroma Green", transparent = "Transparent (experimental)"
 }
@@ -39,6 +55,28 @@ final class AppSettings {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         prefs = Self.load(from: defaults)
+    }
+
+    func apply(_ layout: LayoutPreset) {
+        prefs.panels = layout.panels.union(prefs.panels.intersection([.goniometer]))
+    }
+
+    /// App-local hotkeys: Esc exits clean mode, H toggles it, 1–5 pick a layout, R resets loudness.
+    /// Returns whether the key was handled.
+    func handleKey(_ characters: String, isEscape: Bool, resetLoudness: () -> Void) -> Bool {
+        if isEscape {
+            guard clean else { return false }
+            clean = false
+            return true
+        }
+        switch characters.lowercased() {
+        case "h": clean.toggle()
+        case "r": resetLoudness()
+        case let key where Int(key).map((1...5).contains) == true:
+            apply(LayoutPreset.allCases[Int(key)! - 1])
+        default: return false
+        }
+        return true
     }
 
     func toggle(_ panel: Panel) {

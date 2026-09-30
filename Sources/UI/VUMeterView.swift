@@ -4,7 +4,6 @@ import SwiftUI
 private let swingDegrees = 40.0              // needle travel each side of vertical
 private let arcRadiusOfWidth: CGFloat = 0.62 // scale radius as a fraction of meter width
 private let arcRadiusOfHeight: CGFloat = 1.2 // …capped by this fraction of meter height
-private let arcTopOfHeight: CGFloat = 0.38   // scale apex, from the top, as a fraction of height
 private let needleWidth: CGFloat = 5
 
 private let blueGray = Color(red: 0.66, green: 0.75, blue: 0.92)
@@ -42,9 +41,10 @@ private struct VUMeter: View {
         Canvas { context, size in
             let w = size.width, h = size.height
             let radius = min(w * arcRadiusOfWidth, h * arcRadiusOfHeight)
-            let apexY = max(h * arcTopOfHeight, radius * 0.12 + 20)
-            let pivot = CGPoint(x: w / 2, y: apexY + radius)
             let fontSize = max(9, min(18, radius * 0.075))
+            // Center the visible block (labels above the arc down to the clip line) vertically.
+            let apexY = max((h - radius * 0.45) / 2 + fontSize * 1.5, radius * 0.12 + 20)
+            let pivot = CGPoint(x: w / 2, y: apexY + radius)
 
             /// Point on the arc at `fraction` (0…1 across the scale) and `r` from the pivot.
             func point(_ fraction: Float, _ r: CGFloat) -> CGPoint {
