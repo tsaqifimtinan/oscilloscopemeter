@@ -11,15 +11,16 @@ extension BackgroundMode {
     }
 }
 
+extension WindowShape {
+    var menuLabel: String {
+        guard let size = contentSize else { return "Free (no aspect lock)" }
+        return "\(rawValue)  —  \(Int(size.width)) × \(Int(size.height)) (\(Int(size.width) * 2) × \(Int(size.height) * 2) px)"
+    }
+}
+
 /// Applies clean mode and window-level prefs to the app's NSWindow.
 @MainActor
 final class WindowChrome {
-    static let sizePresets: [(label: String, size: CGSize)] = [
-        ("960 × 540 (1080p on Retina)", CGSize(width: 960, height: 540)),
-        ("640 × 360", CGSize(width: 640, height: 360)),
-        ("1280 × 720", CGSize(width: 1280, height: 720)),
-    ]
-
     private weak var window: NSWindow?
     private var addedFullSizeContent = false
 
@@ -34,12 +35,17 @@ final class WindowChrome {
         guard let window else { return }
         window.titleVisibility = clean ? .hidden : .visible
         window.titlebarAppearsTransparent = clean
+        // The title bar becomes content space under fullSizeContentView; keep the content size
+        // (and so the aspect and OBS pixel size) by resizing the frame around it.
+        let content = window.contentRect(forFrameRect: window.frame).size
         if clean && !window.styleMask.contains(.fullSizeContentView) {
             window.styleMask.insert(.fullSizeContentView)
             addedFullSizeContent = true
+            setContentSize(content)
         } else if !clean && addedFullSizeContent {
             window.styleMask.remove(.fullSizeContentView)
             addedFullSizeContent = false
+            setContentSize(content)
         }
         for button in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
             window.standardWindowButton(button)?.isHidden = clean
@@ -52,16 +58,20 @@ final class WindowChrome {
         window.isOpaque = !transparent
         window.backgroundColor = transparent ? .clear : .black
 
-        if prefs.lockAspect {
-            window.contentAspectRatio = NSSize(width: 16, height: 9)
+        if let aspect = prefs.windowShape.aspect {
+            window.contentAspectRatio = aspect
         } else {
             window.contentResizeIncrements = NSSize(width: 1, height: 1)  // clears the aspect lock
         }
         if clean { NSCursor.setHiddenUntilMouseMoves(true) }
     }
 
+    /// Resizes keeping the window's top edge in place.
     func setContentSize(_ size: CGSize) {
-        window?.setContentSize(size)
+        guard let window else { return }
+        var frame = window.frameRect(forContentRect: NSRect(origin: .zero, size: size))
+        frame.origin = NSPoint(x: window.frame.minX, y: window.frame.maxY - frame.height)
+        window.setFrame(frame, display: true)
     }
 }
 
@@ -109,12 +119,15 @@ struct ViewMenuItems: View {
         Picker("Background", selection: $settings.prefs.background) {
             ForEach(BackgroundMode.allCases, id: \.self) { Text($0.rawValue) }
         }
-        Menu("Window Size") {
-            ForEach(WindowChrome.sizePresets, id: \.label) { preset in
-                Button(preset.label) { settings.chrome.setContentSize(preset.size) }
+        Menu("Window Shape") {
+            ForEach(WindowShape.allCases, id: \.self) { shape in
+                Toggle(shape.menuLabel, isOn: Binding(
+                    get: { settings.prefs.windowShape == shape },
+                    set: { _ in
+                        settings.prefs.windowShape = shape
+                        shape.contentSize.map(settings.chrome.setContentSize)
+                    }))
             }
-            Divider()
-            Toggle("Lock Aspect 16:9", isOn: $settings.prefs.lockAspect)
         }
         Toggle("Keep on Top", isOn: $settings.prefs.keepOnTop)
         Divider()

@@ -38,18 +38,27 @@ Everything lives in the **View** menu and the right-click menu. The right-click 
 The single-letter keys only work while Scope is focused.
 
 - **Panels:** Scope, Goniometer, VU and LUFS can be shown in any combination. The layout presets set Scope/VU/LUFS and leave the Goniometer toggle alone.
+- **Wide layout:** panels sit side by side. The scope takes the leftover width, the goniometer is square, LUFS is a tall column and VU takes up to half the remaining width. A Free window narrower than about 1.6:1 switches to the stacked arrangement (VU under the scope).
 - **VU:** standard ballistics (99% at 300 ms). Reference is 0 VU = −18 dBFS by default, or −20 (EBU) or −14. Stereo shows L and R needles; Mono Sum shows one needle for (L+R)/2.
 - **Loudness:** ITU-R BS.1770-4 / EBU R128. Shows Momentary (400 ms), Short-term (3 s), Integrated (gated) and Loudness Range (EBU Tech 3342). Targets are −23 / −24 / −16 / −14 LUFS; bars turn yellow above the target.
   - **Pause** freezes Integrated and LU Range, which stop accumulating. Momentary and Short-term keep moving so you can still monitor.
   - **Reset** clears everything, including the K-filter state and the max peaks.
   - **Show Peaks** adds sample-peak and 4× true-peak readouts. These are the maximum since the last Reset.
-- **Settings persist:** layout, panels, scope controls, VU reference, loudness target, background, keep-on-top, and window size/position.
+- **Settings persist:** layout, panels, scope controls, VU reference, loudness target, background, keep-on-top, window shape, and window size/position.
 
 ## OBS setup
 
-1. In Scope, pick a size from View → Window Size.
-   - 960 × 540 captures as 1920 × 1080 on a Retina display, because OBS captures native pixels (2× the point size).
-   - Turn on **Lock Aspect 16:9** if you resize by hand.
+1. In Scope, pick a shape from View → Window Shape. It resizes the window and locks the aspect, including in clean mode. OBS captures native pixels, so on a Retina display the capture is 2× the point size:
+
+   | Shape | Window (pt) | Capture (px) |
+   |---|---|---|
+   | 21:9 (default) | 1260 × 540 | 2520 × 1080 |
+   | 2:1 | 1080 × 540 | 2160 × 1080 |
+   | 32:9 | 1920 × 540 | 3840 × 1080 |
+   | 16:9 | 960 × 540 | 1920 × 1080 |
+   | Free | any | — |
+
+   For a wide recording, set OBS **Settings → Video → Base (Canvas) Resolution** and **Output (Scaled) Resolution** to the matching capture size (e.g. 2520 × 1080 for 21:9). A 16:9 canvas would letterbox the window.
 2. Turn on **Keep on Top** so the window is never covered, then enter clean mode (H). The title bar, buttons, controls, overlays, shadow and cursor all disappear. Drag the window from anywhere.
 3. In OBS, add a **macOS Screen Capture** source, set Method to **Window Capture**, and pick the Scope window.
 4. Pick a background in View → Background:

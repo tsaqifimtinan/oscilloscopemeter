@@ -1,5 +1,14 @@
 import SwiftUI
 
+/// Goniometer mapping, screen-style axes with +y up.
+/// Mono (L == R) goes straight up, L-only to the upper left, R-only to the upper right,
+/// L == -R (out of phase) goes horizontal. Matches the reference panel.
+@inline(__always)
+func goniometerPoint(l: Float, r: Float) -> (x: Float, y: Float) {
+    let k: Float = 0.70710678               // 1/sqrt(2)
+    return (x: (r - l) * k, y: (l + r) * k)
+}
+
 /// XY display rotated 45°: mono is vertical, L-only leans left, out-of-phase is horizontal.
 struct GoniometerView: View {
     let feed: StereoFeed
@@ -31,10 +40,12 @@ private final class GoniometerBuffers {
     func path(feed: StereoFeed, gain: Float, size: CGSize) -> Path {
         feed.latest(Self.count, l: l, r: r)
         let cx = size.width / 2, cy = size.height / 2
-        let k = CGFloat(gain) * min(cx, cy) * 0.95 / 2.0.squareRoot()
+        let k = CGFloat(gain) * min(cx, cy) * 0.95  // goniometerPoint already applies 1/√2
         var path = Path()
         for i in 0..<Self.count {
-            let p = CGPoint(x: cx + CGFloat(r[i] - l[i]) * k, y: cy - CGFloat(l[i] + r[i]) * k)
+            let g = goniometerPoint(l: l[i], r: r[i])
+            // Canvas y grows downward.
+            let p = CGPoint(x: cx + CGFloat(g.x) * k, y: cy - CGFloat(g.y) * k)
             if i == 0 { path.move(to: p) } else { path.addLine(to: p) }
         }
         return path

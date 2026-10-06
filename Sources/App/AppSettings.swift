@@ -25,13 +25,38 @@ enum BackgroundMode: String, Codable, CaseIterable {
     case black = "Black", chroma = "Chroma Green", transparent = "Transparent (experimental)"
 }
 
+/// Window aspect presets. Content sizes are points; OBS captures 2× on Retina.
+enum WindowShape: String, Codable, CaseIterable {
+    case ultrawide = "21:9", twoToOne = "2:1", superUltrawide = "32:9", hd = "16:9", free = "Free"
+
+    var aspect: CGSize? {
+        switch self {
+        case .ultrawide: CGSize(width: 7, height: 3)
+        case .twoToOne: CGSize(width: 2, height: 1)
+        case .superUltrawide: CGSize(width: 32, height: 9)
+        case .hd: CGSize(width: 16, height: 9)
+        case .free: nil
+        }
+    }
+
+    /// 540 pt tall (1080 px on Retina), width from the aspect.
+    var contentSize: CGSize? {
+        aspect.map { CGSize(width: 540 * $0.width / $0.height, height: 540) }
+    }
+
+    /// A value from a newer build falls back to the default instead of resetting every pref.
+    init(from decoder: Decoder) throws {
+        self = Self(rawValue: try decoder.singleValueContainer().decode(String.self)) ?? .ultrawide
+    }
+}
+
 /// Everything that persists across launches.
 struct Prefs: Codable, Equatable {
     var scope = ScopeSettings()
     var panels: Set<Panel> = [.scope]
     var background = BackgroundMode.black
     var keepOnTop = false
-    var lockAspect = false
+    var windowShape = WindowShape.ultrawide
     var vuReference: Float = -18  // dBFS RMS that reads 0 VU
     var vuMono = false
     var lufsTarget = -23.0

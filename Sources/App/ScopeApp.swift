@@ -13,7 +13,7 @@ struct ScopeApp: App {
         WindowGroup("Scope") {
             ContentView(capture: capture, settings: settings)
         }
-        .defaultSize(width: 900, height: 360)
+        .defaultSize(width: 1260, height: 540)
         .commands {
             CommandGroup(after: .toolbar) { ViewMenuItems(settings: settings, meters: capture.meters) }
         }
