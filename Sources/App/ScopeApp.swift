@@ -28,8 +28,9 @@ struct ContentView: View {
     var body: some View {
         LayoutView(capture: capture, settings: settings)
             .ignoresSafeArea()
-            .overlay(alignment: .topLeading) { if !settings.clean { levels.padding(10) } }
-            .overlay(alignment: .topTrailing) { if !settings.clean { captureControls.padding(10) } }
+            .overlay(alignment: .topLeading) {
+                if !settings.clean { HStack(spacing: 16) { levels; captureControls }.padding(10) }
+            }
             .overlay(alignment: .bottom) {
                 if !settings.clean && settings.prefs.panels.contains(.scope) { scopeControls }
             }

@@ -60,7 +60,7 @@ struct Prefs: Codable, Equatable {
     var vuReference: Float = -18  // dBFS RMS that reads 0 VU
     var vuMono = false
     var lufsTarget = -23.0
-    var showPeaks = false
+    var showLUFSScale = true
 }
 
 /// Shared UI state. `prefs` saves itself to UserDefaults on every change.

@@ -1,8 +1,7 @@
 import SwiftUI
 
 // Wide-layout knobs. Aspects are width : height of each panel's slot.
-private let lufsAspect: CGFloat = 0.55      // tall and narrow, height-bound
-private let lufsMinWidth: CGFloat = 200     // readout text fits
+private let lufsAspect: CGFloat = 0.38      // three slim bars, height-bound
 private let vuAspect: CGFloat = 2.4         // reference image
 private let vuMaxShare: CGFloat = 0.5       // VU's share of the width left after goniometer/LUFS when the scope shows
 private let fixedMaxShare: CGFloat = 0.6    // goniometer + LUFS cap when the scope shows, so it keeps some width
@@ -22,7 +21,7 @@ struct LayoutView: View {
         let w = size.width, h = size.height
         var out = Widths()
         if panels.contains(.goniometer) { out.gonio = h }  // square
-        if panels.contains(.lufs) { out.lufs = max(h * lufsAspect, lufsMinWidth) }
+        if panels.contains(.lufs) { out.lufs = h * lufsAspect }
         let fixed = out.gonio + out.lufs, budget = panels.contains(.scope) ? w * fixedMaxShare : w
         if fixed > budget {
             out.gonio *= budget / fixed
@@ -89,7 +88,7 @@ struct LayoutView: View {
                 goniometer(prefs, date: date).aspectRatio(1, contentMode: .fit)
             }
             if prefs.panels.contains(.lufs) {
-                lufs(prefs, meters: meters).frame(width: 230)
+                lufs(prefs, meters: meters).frame(width: 170)
             }
         }
     }
@@ -108,8 +107,12 @@ struct LayoutView: View {
     }
 
     private func lufs(_ prefs: Prefs, meters: MeterSnapshot) -> some View {
-        LoudnessPanelView(snapshot: meters, target: prefs.lufsTarget, showPeaks: prefs.showPeaks,
-                          showButtons: !settings.clean, held: $settings.loudnessHeld,
-                          onReset: capture.meters.resetLoudness)
+        LoudnessPanelView(snapshot: meters, target: prefs.lufsTarget, showScale: prefs.showLUFSScale)
+            .contextMenu {
+                Toggle(settings.loudnessHeld ? "Resume" : "Pause", isOn: $settings.loudnessHeld)
+                Button("Reset  (R)", action: capture.meters.resetLoudness)
+                Divider()
+                ViewMenuItems(settings: settings, meters: capture.meters)
+            }
     }
 }
