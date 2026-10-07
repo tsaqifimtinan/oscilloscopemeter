@@ -21,7 +21,7 @@ struct GoniometerView: View {
         Canvas { context, size in
             _ = date
             context.stroke(buffers.path(feed: feed, gain: gain, size: size),
-                           with: .color(.trace.opacity(0.7)), lineWidth: 1)
+                           with: .color(.scopeBlueGray.opacity(0.7)), lineWidth: 1)
         }
         .background(background)
     }

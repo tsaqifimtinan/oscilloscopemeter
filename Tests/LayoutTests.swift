@@ -24,5 +24,5 @@ import Testing
 
 @MainActor @Test func lufsSlotIsSlim() {
     let w = LayoutView.panelWidths(size: CGSize(width: 1260, height: 540), panels: [.scope, .lufs])
-    #expect(abs(w.lufs - 540 * 0.38) < 1e-9)
+    #expect(abs(w.lufs - 540 * 0.32) < 1e-9)
 }

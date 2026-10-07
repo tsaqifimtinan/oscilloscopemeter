@@ -6,10 +6,6 @@ private let arcRadiusOfWidth: CGFloat = 0.62 // scale radius as a fraction of me
 private let arcRadiusOfHeight: CGFloat = 1.2 // …capped by this fraction of meter height
 private let needleWidth: CGFloat = 5
 
-private let blueGray = Color(red: 0.66, green: 0.75, blue: 0.92)
-private let red = Color(red: 1.0, green: 0.20, blue: 0.10)
-private let needleColor = Color(red: 1.0, green: 0.50, blue: 0.0)
-
 private let labels: [Float] = [-20, -10, -7, -5, -4, -3, -2, -1, 0, 1, 2, 3]
 private let percents: [Float] = [0, 20, 40, 60, 80, 100]
 
@@ -65,13 +61,13 @@ private struct VUMeter: View {
             context.clip(to: Path(CGRect(x: 0, y: 0, width: w, height: min(h, apexY + radius * 0.45))))
 
             // Baselines: thin blue-gray up to 0 VU, thick red from 0 to +3.
-            context.stroke(arc(from: 0, to: zero, radius: radius), with: .color(blueGray), lineWidth: 1.5)
-            context.stroke(arc(from: zero, to: 1, radius: radius + 3), with: .color(red), lineWidth: 6)
+            context.stroke(arc(from: 0, to: zero, radius: radius), with: .color(.scopeBlueGray), lineWidth: 1.5)
+            context.stroke(arc(from: zero, to: 1, radius: radius + 3), with: .color(.vuRed), lineWidth: 6)
 
             // Top row: VU marks and labels.
             for value in labels {
                 let f = needleFraction(vu: value)
-                let color = value > 0 ? red : blueGray
+                let color = value > 0 ? Color.vuRed : Color.scopeBlueGray
                 var tick = Path()
                 tick.move(to: point(f, radius + 6))
                 tick.addLine(to: point(f, radius + 14))
@@ -87,23 +83,23 @@ private struct VUMeter: View {
                 let f = pct / 100 / 1.4125
                 let dot = point(f, radius - 10)
                 context.fill(Path(ellipseIn: CGRect(x: dot.x - 2, y: dot.y - 2, width: 4, height: 4)),
-                             with: .color(blueGray))
+                             with: .color(.scopeBlueGray))
                 context.draw(Text(String(Int(pct)))
                                 .font(.system(size: fontSize * 0.6, design: .monospaced))
-                                .foregroundStyle(blueGray.opacity(0.8)),
+                                .foregroundStyle(Color.scopeBlueGray.opacity(0.8)),
                              at: point(f, radius - 10 - fontSize * 0.9))
             }
 
-            context.draw(Text("VU").font(.system(size: fontSize * 1.2, weight: .bold)).foregroundStyle(blueGray),
+            context.draw(Text("VU").font(.system(size: fontSize * 1.2, weight: .bold)).foregroundStyle(Color.scopeBlueGray),
                          at: CGPoint(x: pivot.x, y: apexY + radius * 0.3))
-            context.draw(Text(label).font(.system(size: fontSize * 0.7, design: .monospaced)).foregroundStyle(blueGray),
+            context.draw(Text(label).font(.system(size: fontSize * 0.7, design: .monospaced)).foregroundStyle(Color.scopeBlueGray),
                          at: CGPoint(x: 16, y: apexY + radius * 0.35), anchor: .leading)
 
             // Needle, pivoting below the visible scale.
             var needle = Path()
             needle.move(to: pivot)
             needle.addLine(to: point(needleFraction(vu: vu), radius + 12))
-            context.stroke(needle, with: .color(needleColor),
+            context.stroke(needle, with: .color(.vuNeedleOrange),
                            style: StrokeStyle(lineWidth: needleWidth, lineCap: .round))
         }
     }

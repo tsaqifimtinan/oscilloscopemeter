@@ -22,14 +22,10 @@ struct ScopeView: View {
         Canvas { context, size in
             _ = date
             context.stroke(buffers.trace(feed: feed, settings: settings, size: size),
-                           with: .color(.trace), lineWidth: 1)
+                           with: .color(.scopeBlueGray), lineWidth: 1)
         }
         .background(background)
     }
-}
-
-extension Color {
-    static let trace = Color(red: 0.66, green: 0.75, blue: 0.92)
 }
 
 /// Preallocated snapshot + displayed frame, so drawing doesn't allocate sample storage per frame.

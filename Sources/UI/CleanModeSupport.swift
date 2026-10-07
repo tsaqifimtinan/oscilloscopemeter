@@ -146,7 +146,6 @@ struct ViewMenuItems: View {
                 Text("−16 LUFS").tag(-16.0)
                 Text("−14 LUFS (streaming)").tag(-14.0)
             }
-            Toggle("Show dB Scale", isOn: $settings.prefs.showLUFSScale)
             Divider()
             Toggle("Pause", isOn: $settings.loudnessHeld)
             Button("Reset  (R)") { meters.resetLoudness() }

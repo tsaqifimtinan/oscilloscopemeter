@@ -40,11 +40,10 @@ The single-letter keys only work while Scope is focused.
 - **Panels:** Scope, Goniometer, VU and LUFS can be shown in any combination. The layout presets set Scope/VU/LUFS and leave the Goniometer toggle alone.
 - **Wide layout:** panels sit side by side. The scope takes the leftover width, the goniometer is square, LUFS is a tall column and VU takes up to half the remaining width. A Free window narrower than about 1.6:1 switches to the stacked arrangement (VU under the scope).
 - **VU:** standard ballistics (99% at 300 ms). Reference is 0 VU = −18 dBFS by default, or −20 (EBU) or −14. Stereo shows L and R needles; Mono Sum shows one needle for (L+R)/2.
-- **Loudness:** ITU-R BS.1770-4 / EBU R128. Three slim bars: Momentary (400 ms), Short-term (3 s) and Integrated (gated). Loudness Range (EBU Tech 3342) is still measured but not displayed. Targets are −23 / −24 / −16 / −14 LUFS; bars turn yellow above the target, which is marked by an arrow and a thin line.
+- **Loudness:** ITU-R BS.1770-4 / EBU R128. Three slim bars with no numbers: Momentary (400 ms), Short-term (3 s) and Integrated (gated). Loudness Range (EBU Tech 3342) is still measured but not displayed. Targets are −23 / −24 / −16 / −14 LUFS, marked by an orange arrow and line; bars turn solid above the target. The panel has no background of its own, so it follows the app background.
   - **Pause** freezes Integrated and LU Range, which stop accumulating. Momentary and Short-term keep moving so you can still monitor.
   - **Reset** clears everything, including the K-filter state and the max peaks.
   - Pause/Resume and Reset are in the Loudness menu and on the panel's right-click menu; R also resets.
-  - **Show dB Scale** (on by default) shows the dB labels left of the bars. Turn it off for just the bars.
 - **Settings persist:** layout, panels, scope controls, VU reference, loudness target, background, keep-on-top, window shape, and window size/position.
 
 ## OBS setup
