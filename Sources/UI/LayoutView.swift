@@ -22,14 +22,15 @@ struct LayoutView: View {
         var out = Widths()
         if panels.contains(.goniometer) { out.gonio = h }  // square
         if panels.contains(.lufs) { out.lufs = h * lufsAspect }
-        let fixed = out.gonio + out.lufs, budget = panels.contains(.scope) ? w * fixedMaxShare : w
+        let flexible = panels.contains(.scope) || panels.contains(.spectrogram)
+        let fixed = out.gonio + out.lufs, budget = flexible ? w * fixedMaxShare : w
         if fixed > budget {
             out.gonio *= budget / fixed
             out.lufs *= budget / fixed
         }
         let rest = w - out.gonio - out.lufs
         if panels.contains(.vu) {
-            out.vu = panels.contains(.scope) ? min(h * vuAspect, rest * vuMaxShare) : rest
+            out.vu = flexible ? min(h * vuAspect, rest * vuMaxShare) : rest
         }
         return out
     }
@@ -56,11 +57,11 @@ struct LayoutView: View {
         }
     }
 
-    /// Side by side: scope (flexible) | VU | goniometer | LUFS.
+    /// Side by side: spectrogram over scope (flexible) | VU | goniometer | LUFS.
     private func wide(prefs: Prefs, meters: MeterSnapshot, date: Date, widths: Widths) -> some View {
         HStack(spacing: 0) {
-            if prefs.panels.contains(.scope) {
-                scope(prefs, date: date)
+            if prefs.panels.contains(.scope) || prefs.panels.contains(.spectrogram) {
+                flexible(prefs, date: date)
             }
             if prefs.panels.contains(.vu) {
                 vu(prefs, meters: meters).frame(width: widths.vu)
@@ -76,12 +77,13 @@ struct LayoutView: View {
 
     /// The pre-M12 arrangement, for Free windows narrower than `stackedBelow`.
     private func stacked(prefs: Prefs, meters: MeterSnapshot, date: Date) -> some View {
-        let scope = prefs.panels.contains(.scope), vu = prefs.panels.contains(.vu)
+        let top = prefs.panels.contains(.scope) || prefs.panels.contains(.spectrogram)
+        let vu = prefs.panels.contains(.vu)
         return HStack(spacing: 0) {
-            if scope || vu {
+            if top || vu {
                 VStack(spacing: 0) {
-                    if scope { self.scope(prefs, date: date) }
-                    if vu { self.vu(prefs, meters: meters).frame(maxHeight: scope ? 220 : .infinity) }
+                    if top { flexible(prefs, date: date) }
+                    if vu { self.vu(prefs, meters: meters).frame(maxHeight: top ? 220 : .infinity) }
                 }
             }
             if prefs.panels.contains(.goniometer) {
@@ -89,6 +91,19 @@ struct LayoutView: View {
             }
             if prefs.panels.contains(.lufs) {
                 lufs(prefs, meters: meters).frame(width: 150)
+            }
+        }
+    }
+
+    /// Spectrogram (60%) over scope (40%) when both are on, otherwise whichever is.
+    private func flexible(_ prefs: Prefs, date: Date) -> some View {
+        GeometryReader { geo in
+            VStack(spacing: 0) {
+                if prefs.panels.contains(.spectrogram) {
+                    SpectrogramView(engine: capture.spectrogram)
+                        .frame(height: prefs.panels.contains(.scope) ? geo.size.height * 0.6 : geo.size.height)
+                }
+                if prefs.panels.contains(.scope) { scope(prefs, date: date) }
             }
         }
     }

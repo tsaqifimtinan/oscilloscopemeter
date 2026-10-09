@@ -26,3 +26,8 @@ import Testing
     let w = LayoutView.panelWidths(size: CGSize(width: 1260, height: 540), panels: [.scope, .lufs])
     #expect(abs(w.lufs - 540 * 0.32) < 1e-9)
 }
+
+@MainActor @Test func spectrogramTakesTheFlexibleSlot() {
+    let w = LayoutView.panelWidths(size: CGSize(width: 1260, height: 540), panels: [.spectrogram, .vu])
+    #expect(w.vu < 1260 * 0.5 + 1e-9)  // VU capped as with the scope, so the spectrogram keeps width
+}

@@ -2,13 +2,13 @@ import Foundation
 import Observation
 
 enum Panel: String, Codable, CaseIterable {
-    case scope = "Scope", goniometer = "Goniometer", vu = "VU", lufs = "LUFS"
+    case scope = "Scope", goniometer = "Goniometer", vu = "VU", lufs = "LUFS", spectrogram = "Spectrogram"
 }
 
 /// Layout presets set the panel toggles; the goniometer toggle is left as it is.
 enum LayoutPreset: String, CaseIterable {
     case scope = "Scope", scopeVU = "Scope + VU", scopeLUFS = "Scope + LUFS",
-         scopeVULUFS = "Scope + VU + LUFS", meters = "VU + LUFS"
+         scopeVULUFS = "Scope + VU + LUFS", meters = "VU + LUFS", spectrogram = "Spectrogram"
 
     var panels: Set<Panel> {
         switch self {
@@ -17,6 +17,7 @@ enum LayoutPreset: String, CaseIterable {
         case .scopeLUFS: [.scope, .lufs]
         case .scopeVULUFS: [.scope, .vu, .lufs]
         case .meters: [.vu, .lufs]
+        case .spectrogram: [.spectrogram]
         }
     }
 }
@@ -85,7 +86,7 @@ final class AppSettings {
         prefs.panels = layout.panels.union(prefs.panels.intersection([.goniometer]))
     }
 
-    /// App-local hotkeys: Esc exits clean mode, H toggles it, 1–5 pick a layout, R resets loudness.
+    /// App-local hotkeys: Esc exits clean mode, H toggles it, 1–6 pick a layout, R resets loudness.
     /// Returns whether the key was handled.
     func handleKey(_ characters: String, isEscape: Bool, resetLoudness: () -> Void) -> Bool {
         if isEscape {
@@ -96,7 +97,7 @@ final class AppSettings {
         switch characters.lowercased() {
         case "h": clean.toggle()
         case "r": resetLoudness()
-        case let key where Int(key).map((1...5).contains) == true:
+        case let key where Int(key).map((1...LayoutPreset.allCases.count).contains) == true:
             apply(LayoutPreset.allCases[Int(key)! - 1])
         default: return false
         }

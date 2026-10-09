@@ -47,7 +47,9 @@ private func freshDefaults() -> UserDefaults {
     var resets = 0
     #expect(settings.handleKey("r", isEscape: false, resetLoudness: { resets += 1 }))
     #expect(resets == 1)
-    #expect(!settings.handleKey("6", isEscape: false, resetLoudness: {}))
+    #expect(settings.handleKey("6", isEscape: false, resetLoudness: {}))
+    #expect(settings.prefs.panels == [.spectrogram, .goniometer])
+    #expect(!settings.handleKey("7", isEscape: false, resetLoudness: {}))
     #expect(!settings.handleKey("x", isEscape: false, resetLoudness: {}))
 }
 
