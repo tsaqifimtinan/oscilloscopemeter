@@ -32,7 +32,7 @@ Everything lives in the **View** menu and the right-click menu. The right-click 
 |-----|--------|
 | ⇧⌘H or H | Toggle clean mode |
 | Esc | Leave clean mode |
-| 1 – 5 | Layout: Scope only · Scope + VU · Scope + LUFS · Scope + VU + LUFS · Meters only |
+| 1 – 5 | Layout: Scope · Scope + VU · Scope + LUFS · Scope + VU + LUFS · VU + LUFS |
 | R | Reset loudness |
 
 The single-letter keys only work while Scope is focused.

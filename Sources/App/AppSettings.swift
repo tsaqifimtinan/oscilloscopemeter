@@ -7,8 +7,8 @@ enum Panel: String, Codable, CaseIterable {
 
 /// Layout presets set the panel toggles; the goniometer toggle is left as it is.
 enum LayoutPreset: String, CaseIterable {
-    case scope = "Scope Only", scopeVU = "Scope + VU", scopeLUFS = "Scope + LUFS",
-         scopeVULUFS = "Scope + VU + LUFS", meters = "Meters Only"
+    case scope = "Scope", scopeVU = "Scope + VU", scopeLUFS = "Scope + LUFS",
+         scopeVULUFS = "Scope + VU + LUFS", meters = "VU + LUFS"
 
     var panels: Set<Panel> {
         switch self {
