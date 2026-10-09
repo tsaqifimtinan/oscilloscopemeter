@@ -32,14 +32,15 @@ Everything lives in the **View** menu and the right-click menu. The right-click 
 |-----|--------|
 | ⇧⌘H or H | Toggle clean mode |
 | Esc | Leave clean mode |
-| 1 – 6 | Layout: Scope · Scope + VU · Scope + LUFS · Scope + VU + LUFS · VU + LUFS · Spectrogram |
+| 1 – 7 | Layout: Scope · Scope + VU · Scope + LUFS · Scope + VU + LUFS · VU + LUFS · Spectrogram · Spectrogram + Scope |
 | R | Reset loudness |
+| C | Clear the spectrogram |
 
 The single-letter keys only work while Scope is focused.
 
 - **Panels:** Scope, Spectrogram, Goniometer, VU and LUFS can be shown in any combination. The layout presets set Scope/VU/LUFS and leave the Goniometer toggle alone.
 - **Wide layout:** panels sit side by side. The scope (or the spectrogram, above the scope when both are on) takes the leftover width, the goniometer is square, LUFS is a tall column and VU takes up to half the remaining width. A Free window narrower than about 1.6:1 switches to the stacked arrangement (VU under the scope).
-- **Spectrogram:** scrolling time-frequency view drawn with Metal. The newest audio is at the right, frequency runs on a log scale from 20 Hz at the bottom to 20 kHz at the top, and the Ice colormap shades from black through the scope's blue-gray to white. Defaults: 4096-point FFT of (L+R)/2, 10 s of history, −90 to −10 dBFS, +3 dB/oct tilt. Controls arrive in M17.
+- **Spectrogram:** scrolling time-frequency view drawn with Metal. The newest audio is at the right, frequency runs on a log scale from 20 Hz at the bottom to 20 kHz at the top, and the Ice colormap shades from black through the scope's blue-gray to white. Its control row sets FFT size (2048/4096/8192), history (5–30 s), channel (Mix, L, R, Mid, Side), frequency range, floor, ceiling, tilt (0 to +6 dB/oct around 1 kHz), colormap (Ice, Magma, Viridis) and frequency labels. Floor, ceiling, tilt and colormap restyle the existing history instantly; the other settings clear it and start again. Defaults: 4096-point FFT of the mix, 10 s, −90 to −10 dBFS, +3 dB/oct. The engine stops its FFT work while the panel is hidden. Clean mode hides the labels.
 - **VU:** standard ballistics (99% at 300 ms). Reference is 0 VU = −18 dBFS by default, or −20 (EBU) or −14. Stereo shows L and R needles; Mono Sum shows one needle for (L+R)/2.
 - **Loudness:** ITU-R BS.1770-4 / EBU R128. Three slim bars with no numbers: Momentary (400 ms), Short-term (3 s) and Integrated (gated). Loudness Range (EBU Tech 3342) is still measured but not displayed. Targets are −23 / −24 / −16 / −14 LUFS, marked by an orange arrow and line; bars turn solid above the target. The panel has no background of its own, so it follows the app background.
   - **Pause** freezes Integrated and LU Range, which stop accumulating. Momentary and Short-term keep moving so you can still monitor.

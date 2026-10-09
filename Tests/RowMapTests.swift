@@ -1,10 +1,10 @@
 import Foundation
+import SwiftUI
 import Testing
 @testable import Scope
 
-private func map(n: Int = 4096, range: FrequencyRange = .full, tilt: Double = 0) -> RowMap {
-    RowMap(fftSize: n, fMin: range.bounds.min, fMax: range.bounds.max, rows: 512, sampleRate: 48_000,
-           tiltDBPerOct: tilt)
+private func map(n: Int = 4096, range: FrequencyRange = .full) -> RowMap {
+    RowMap(fftSize: n, fMin: range.bounds.min, fMax: range.bounds.max, rows: 512, sampleRate: 48_000)
 }
 
 func quantize(_ db: [Float], _ m: RowMap) -> [UInt8] {
@@ -34,14 +34,14 @@ func rowMapIsWellFormed(n: Int, range: FrequencyRange) {
     #expect(m.firstMaxRow > 0 && m.firstMaxRow < m.rows)  // both regimes used
 }
 
-@Test func tiltAddsSixDBOverTwoOctaves() {
-    let m = map(tilt: 3)
-    let column = quantize([Float](repeating: -60, count: 2048), m)
-    let at = { (f: Double) in Float(column[Int(m.row(for: f).rounded())]) / 255 * 120 - 120 }
-    #expect(abs(at(4000) - at(1000) - 6) < 0.6)
-    #expect(abs(at(1000) + 60) < 0.6)
+@Test func silenceQuantizesToZero() {
+    #expect(quantize(spectrum([Float](repeating: 0, count: 4096)), map()).allSatisfy { $0 == 0 })
 }
 
-@Test func silenceQuantizesToZero() {
-    #expect(quantize(spectrum([Float](repeating: 0, count: 4096)), map(tilt: 6)).allSatisfy { $0 == 0 })
+@Test(arguments: FrequencyRange.allCases)
+func labelsSitOnTheirRows(range: FrequencyRange) {
+    let m = RowMap(fftSize: 4096, fMin: range.bounds.min, fMax: range.bounds.max, rows: 512, sampleRate: 48_000)
+    let height: CGFloat = 540
+    let rowY = height * (1 - (m.row(for: 1000) + 0.5) / 512)  // center of the 1 kHz row, from the top
+    #expect(abs(FrequencyLabels.y(of: 1000, range: range, height: height) - rowY) < 1e-9)
 }

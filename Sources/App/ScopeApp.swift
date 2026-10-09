@@ -32,7 +32,14 @@ struct ContentView: View {
                 if !settings.clean { HStack(spacing: 16) { levels; captureControls }.padding(10) }
             }
             .overlay(alignment: .bottom) {
-                if !settings.clean && settings.prefs.panels.contains(.scope) { scopeControls }
+                if !settings.clean {
+                    VStack(spacing: 0) {
+                        if settings.prefs.panels.contains(.spectrogram) {
+                            SpectrogramControls(settings: $settings.prefs.spectrogram)
+                        }
+                        if settings.prefs.panels.contains(.scope) { scopeControls }
+                    }
+                }
             }
             .gesture(WindowDragGesture(), isEnabled: settings.clean)
             .allowsWindowActivationEvents(true)
@@ -43,6 +50,9 @@ struct ContentView: View {
             })
             .onChange(of: settings.clean) { applyChrome() }
             .onChange(of: settings.prefs) { applyChrome() }
+            .onChange(of: settings.prefs.panels, initial: true) {
+                capture.spectrogram.setActive(settings.prefs.panels.contains(.spectrogram))
+            }
             .onChange(of: settings.loudnessHeld) { capture.meters.setLoudnessHeld(settings.loudnessHeld) }
             .onAppear { installKeyMonitor() }
             .onDisappear { keyMonitor.map(NSEvent.removeMonitor) }
@@ -59,12 +69,14 @@ struct ContentView: View {
     private func installKeyMonitor() {
         guard keyMonitor == nil else { return }
         let meters = capture.meters
+        let spectrogram = capture.spectrogram
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [settings] event in
             guard event.modifierFlags.intersection([.command, .control, .option]).isEmpty else { return event }
             let characters = event.charactersIgnoringModifiers ?? ""
             let isEscape = event.keyCode == 53
             let handled = MainActor.assumeIsolated {
-                settings.handleKey(characters, isEscape: isEscape, resetLoudness: meters.resetLoudness)
+                settings.handleKey(characters, isEscape: isEscape, resetLoudness: meters.resetLoudness,
+                                   clearSpectrogram: spectrogram.clear)
             }
             return handled ? nil : event
         }

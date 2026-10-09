@@ -49,7 +49,12 @@ private func freshDefaults() -> UserDefaults {
     #expect(resets == 1)
     #expect(settings.handleKey("6", isEscape: false, resetLoudness: {}))
     #expect(settings.prefs.panels == [.spectrogram, .goniometer])
-    #expect(!settings.handleKey("7", isEscape: false, resetLoudness: {}))
+    #expect(settings.handleKey("7", isEscape: false, resetLoudness: {}))
+    #expect(settings.prefs.panels == [.spectrogram, .scope, .goniometer])
+    #expect(!settings.handleKey("8", isEscape: false, resetLoudness: {}))
+    var clears = 0
+    #expect(settings.handleKey("c", isEscape: false, resetLoudness: {}, clearSpectrogram: { clears += 1 }))
+    #expect(clears == 1)
     #expect(!settings.handleKey("x", isEscape: false, resetLoudness: {}))
 }
 
@@ -71,4 +76,40 @@ private func freshDefaults() -> UserDefaults {
         guard let size = shape.contentSize, let aspect = shape.aspect else { continue }
         #expect(abs(size.width / size.height - aspect.width / aspect.height) < 1e-9)
     }
+}
+
+@MainActor @Test func spectrogramSettingsRoundTrip() {
+    let defaults = freshDefaults()
+    let a = AppSettings(defaults: defaults)
+    a.prefs.spectrogram = SpectrogramSettings()
+    a.prefs.spectrogram.fftSize = 8192
+    a.prefs.spectrogram.history = 30
+    a.prefs.spectrogram.channel = .side
+    a.prefs.spectrogram.range = .low
+    a.prefs.spectrogram.floor = -100
+    a.prefs.spectrogram.ceiling = -5
+    a.prefs.spectrogram.tilt = 4.5
+    a.prefs.spectrogram.colormap = .viridis
+    a.prefs.spectrogram.labels = false
+    #expect(AppSettings(defaults: defaults).prefs.spectrogram == a.prefs.spectrogram)
+}
+
+@MainActor @Test func unknownSpectrogramValuesFallBackOneByOne() {
+    let defaults = freshDefaults()
+    let stored = #"{"keepOnTop": true, "spectrogram": {"fftSize": 1000, "history": 7, "channel": "Quad", "#
+        + #""range": "1-2 Hz", "floor": -500, "ceiling": -20, "tilt": 9, "colormap": "Jet", "labels": false}}"#
+    defaults.set(Data(stored.utf8), forKey: AppSettings.key)
+    let s = AppSettings(defaults: defaults)
+    var expected = SpectrogramSettings()
+    expected.ceiling = -20  // the only valid values survive
+    expected.labels = false
+    #expect(s.prefs.spectrogram == expected)
+    #expect(s.prefs.keepOnTop)  // the rest of the prefs aren't reset
+}
+
+@Test func layoutAndPanelRoundTrip() throws {
+    for layout in LayoutPreset.allCases { #expect(LayoutPreset(rawValue: layout.rawValue) == layout) }
+    let panels = Set(Panel.allCases)
+    #expect(try JSONDecoder().decode(Set<Panel>.self, from: JSONEncoder().encode(panels)) == panels)
+    #expect(LayoutPreset.allCases.firstIndex(of: .spectrogramScope) == 6)  // key 7
 }

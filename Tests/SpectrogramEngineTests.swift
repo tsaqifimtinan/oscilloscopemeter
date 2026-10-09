@@ -90,9 +90,7 @@ private func readColumns(_ engine: SpectrogramEngine, _ cursor: inout ColumnQueu
 
 @Test func logChirpPeakRowRises() {
     let feed = StereoFeed()
-    var config = SpectrogramConfig()
-    config.tilt = 0
-    let engine = SpectrogramEngine(feed: feed, config: config)
+    let engine = SpectrogramEngine(feed: feed)
     var cursor = ColumnQueue.Cursor()
     // 20 Hz → 20 kHz exponential chirp over 10 s.
     let seconds = 10.0, sr = 48_000.0, k = log(1000.0)
@@ -143,4 +141,23 @@ private func plateauCenter(_ column: [UInt8]) -> Double {
         #expect(columns.count == (10_000 - config.fftSize) / config.hop + 1)
         #expect(engine.snapshot.peakDB.isFinite)
     }
+}
+
+@Test func hiddenEngineSkipsWorkAndRestartsFresh() {
+    let feed = StereoFeed()
+    let engine = SpectrogramEngine(feed: feed)
+    var frames = 0
+    engine.onFrame = { _ in frames += 1 }
+    engine.setActive(false)
+    write(feed, sine(1000, count: 20_000))
+    engine.drain()
+    #expect(frames == 0)
+    engine.setActive(true)
+    write(feed, sine(1000, count: 4_096))
+    engine.drain()
+    #expect(frames == 1)  // only post-show audio, from a fresh window
+    #expect(engine.snapshot.columns == 1)
+    engine.clear()
+    engine.drain()
+    #expect(engine.snapshot.columns == 0)
 }

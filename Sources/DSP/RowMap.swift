@@ -1,8 +1,7 @@
 import Accelerate
 import Foundation
 
-/// Maps FFT bins onto `rows` log-spaced frequency rows (row 0 = fMin) with a spectral tilt,
-/// and quantizes to UInt8 (0…255 = -120…0 dBFS). Built once per setting; `apply` doesn't allocate.
+/// Maps FFT bins onto `rows` log-spaced frequency rows (row 0 = fMin) and quantizes to UInt8 (0…255 = -120…0 dBFS). Built once per setting; `apply` doesn't allocate.
 struct RowMap {
     let rows: Int
     let fMin: Double, fMax: Double
@@ -12,16 +11,14 @@ struct RowMap {
     private(set) var lo: [Int]
     private(set) var hi: [Int]
     private(set) var frac: [Float]
-    private(set) var tilt: [Float]
 
-    init(fftSize n: Int, fMin: Double, fMax: Double, rows: Int, sampleRate: Double, tiltDBPerOct: Double) {
+    init(fftSize n: Int, fMin: Double, fMax: Double, rows: Int, sampleRate: Double) {
         self.rows = rows
         self.fMin = fMin
         self.fMax = fMax
         lo = .init(repeating: 0, count: rows)
         hi = lo
         frac = .init(repeating: 0, count: rows)
-        tilt = frac
         firstMaxRow = rows
         let lastBin = n / 2 - 1  // bin 0 is DC/Nyquist; skip it
         let binPerHz = Double(n) / sampleRate
@@ -29,7 +26,6 @@ struct RowMap {
             let lower = Self.frequency(row: Double(r), fMin: fMin, fMax: fMax, rows: rows) * binPerHz
             let upper = Self.frequency(row: Double(r + 1), fMin: fMin, fMax: fMax, rows: rows) * binPerHz
             let center = Self.frequency(row: Double(r) + 0.5, fMin: fMin, fMax: fMax, rows: rows)
-            tilt[r] = Float(tiltDBPerOct * log2(center / 1000))
             if upper - lower < 1 && firstMaxRow == rows {
                 let pos = center * binPerHz
                 let base = min(max(Int(pos), 1), lastBin - 1)
@@ -50,9 +46,15 @@ struct RowMap {
         fMin * pow(fMax / fMin, row / Double(rows))
     }
 
-    /// Fractional row index whose center is `f` (labels use this so they can't drift from the data).
+    /// Fractional row index whose center is `f`.
     func row(for f: Double) -> Double {
-        Double(rows) * log(f / fMin) / log(fMax / fMin) - 0.5
+        Double(rows) * Self.position(of: f, fMin: fMin, fMax: fMax) - 0.5
+    }
+
+    /// Height of `f` on the axis, 0 at fMin to 1 at fMax. Labels and the shader's tilt use this
+    /// same mapping, so they can't drift from the data.
+    static func position(of f: Double, fMin: Double, fMax: Double) -> Double {
+        log(f / fMin) / log(fMax / fMin)
     }
 
     func apply(db: UnsafePointer<Float>, into out: UnsafeMutablePointer<UInt8>) {
@@ -64,7 +66,7 @@ struct RowMap {
             } else {
                 vDSP_maxv(db + lo[r], 1, &v, vDSP_Length(hi[r] - lo[r] + 1))
             }
-            let q = ((v + tilt[r] + 120) / 120 * 255).rounded()
+            let q = ((v + 120) / 120 * 255).rounded()  // tilt is applied in the shader
             out[r] = q.isNaN ? 0 : UInt8(min(max(q, 0), 255))
         }
     }

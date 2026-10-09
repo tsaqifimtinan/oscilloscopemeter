@@ -8,7 +8,8 @@ enum Panel: String, Codable, CaseIterable {
 /// Layout presets set the panel toggles; the goniometer toggle is left as it is.
 enum LayoutPreset: String, CaseIterable {
     case scope = "Scope", scopeVU = "Scope + VU", scopeLUFS = "Scope + LUFS",
-         scopeVULUFS = "Scope + VU + LUFS", meters = "VU + LUFS", spectrogram = "Spectrogram"
+         scopeVULUFS = "Scope + VU + LUFS", meters = "VU + LUFS", spectrogram = "Spectrogram",
+         spectrogramScope = "Spectrogram + Scope"
 
     var panels: Set<Panel> {
         switch self {
@@ -18,6 +19,7 @@ enum LayoutPreset: String, CaseIterable {
         case .scopeVULUFS: [.scope, .vu, .lufs]
         case .meters: [.vu, .lufs]
         case .spectrogram: [.spectrogram]
+        case .spectrogramScope: [.spectrogram, .scope]
         }
     }
 }
@@ -54,6 +56,7 @@ enum WindowShape: String, Codable, CaseIterable {
 /// Everything that persists across launches.
 struct Prefs: Codable, Equatable {
     var scope = ScopeSettings()
+    var spectrogram = SpectrogramSettings()
     var panels: Set<Panel> = [.scope]
     var background = BackgroundMode.black
     var keepOnTop = false
@@ -86,9 +89,11 @@ final class AppSettings {
         prefs.panels = layout.panels.union(prefs.panels.intersection([.goniometer]))
     }
 
-    /// App-local hotkeys: Esc exits clean mode, H toggles it, 1–6 pick a layout, R resets loudness.
+    /// App-local hotkeys: Esc exits clean mode, H toggles it, 1–7 pick a layout, R resets loudness,
+    /// C clears the spectrogram.
     /// Returns whether the key was handled.
-    func handleKey(_ characters: String, isEscape: Bool, resetLoudness: () -> Void) -> Bool {
+    func handleKey(_ characters: String, isEscape: Bool, resetLoudness: () -> Void,
+                   clearSpectrogram: () -> Void = {}) -> Bool {
         if isEscape {
             guard clean else { return false }
             clean = false
@@ -97,6 +102,7 @@ final class AppSettings {
         switch characters.lowercased() {
         case "h": clean.toggle()
         case "r": resetLoudness()
+        case "c": clearSpectrogram()
         case let key where Int(key).map((1...LayoutPreset.allCases.count).contains) == true:
             apply(LayoutPreset.allCases[Int(key)! - 1])
         default: return false

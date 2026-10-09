@@ -16,6 +16,10 @@ final class SpectrogramRenderer: NSObject, MTKViewDelegate {
     /// Floor and ceiling in dBFS.
     var floor: Float = -90
     var ceiling: Float = -10
+    /// dB/oct around 1 kHz, added per row in the shader so it restyles the existing history.
+    var tilt: Float = 3
+    /// Frequency axis, needed for the tilt.
+    var range = FrequencyRange.full
     var colormap = Colormap.ice {
         didSet { if colormap != oldValue { upload(colormap) } }
     }
@@ -62,11 +66,13 @@ final class SpectrogramRenderer: NSObject, MTKViewDelegate {
     func encode(_ pass: MTLRenderPassDescriptor, into buffer: MTLCommandBuffer) {
         drainColumns()
         guard let encoder = buffer.makeRenderCommandEncoder(descriptor: pass) else { return }
-        var params = SIMD3<Float>(Float(head), (floor + 120) / 120, (ceiling + 120) / 120)  // matches `Params`
+        let (fMin, fMax) = range.bounds
+        var params = SIMD8<Float>(Float(head), (floor + 120) / 120, (ceiling + 120) / 120, tilt / 120,
+                                  Float(log2(fMin / 1000)), Float(log2(fMax / fMin)), 0, 0)  // matches `Params`
         encoder.setRenderPipelineState(pipeline)
         encoder.setFragmentTexture(history, index: 0)
         encoder.setFragmentTexture(lut, index: 1)
-        encoder.setFragmentBytes(&params, length: 12, index: 0)
+        encoder.setFragmentBytes(&params, length: 24, index: 0)
         encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         encoder.endEncoding()
     }
@@ -128,7 +134,9 @@ vertex VSOut specVert(uint vid [[vertex_id]]) {
     return o;
 }
 
-struct Params { float head; float floorN; float ceilN; };  // head in columns; floor/ceil in 0...1 of -120...0 dBFS
+// head in columns; floor/ceil in 0...1 of -120...0 dBFS; tilt in the same units per octave;
+// octLo = log2(fMin / 1 kHz), octSpan = log2(fMax / fMin).
+struct Params { float head; float floorN; float ceilN; float tiltN; float octLo; float octSpan; };
 
 fragment float4 specFrag(VSOut in [[stage_in]],
                          texture2d<float> spec [[texture(0)]],  // r8Unorm, columns x rows, row 0 = lowest frequency
@@ -140,7 +148,8 @@ fragment float4 specFrag(VSOut in [[stage_in]],
     // Oldest column sits at `head`, so the newest (head - 1) ends at the right edge. x snaps to the
     // texel center: no blending between columns, so no seam where newest meets oldest.
     float x = (fmod(floor(in.uv.x * w) + p.head, w) + 0.5) / w;
-    float v = spec.sample(sSpec, float2(x, 1.0 - in.uv.y)).r;
+    float y = 1.0 - in.uv.y;  // 0 = fMin, 1 = fMax, same log mapping as RowMap
+    float v = spec.sample(sSpec, float2(x, y)).r + p.tiltN * (p.octLo + y * p.octSpan);
     float t = saturate((v - p.floorN) / max(p.ceilN - p.floorN, 1e-4));
     return lut.sample(sLut, float2((t * 255 + 0.5) / 256, 0.5));
 }

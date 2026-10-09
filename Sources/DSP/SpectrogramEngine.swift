@@ -25,7 +25,6 @@ struct SpectrogramConfig: Equatable, Sendable {
     var history = 10.0  // seconds across the view
     var channel = SpectrogramChannel.mix
     var range = FrequencyRange.full
-    var tilt = 3.0  // dB/oct around 1 kHz
     var columns = 1024  // texture width
     var rows = 512
 
@@ -111,7 +110,7 @@ final class SpectrogramEngine: @unchecked Sendable {
     private let feed: StereoFeed
     private let queue = DispatchQueue(label: "scope.spectrogram", qos: .userInitiated)
     private let published = OSAllocatedUnfairLock(initialState: SpectrumSnapshot())
-    private let pending = OSAllocatedUnfairLock<SpectrogramConfig?>(initialState: nil)
+    private let commands = OSAllocatedUnfairLock(initialState: Commands())
     private let l = UnsafeMutablePointer<Float>.allocate(capacity: chunk)
     private let r = UnsafeMutablePointer<Float>.allocate(capacity: chunk)
     private let mixed = UnsafeMutablePointer<Float>.allocate(capacity: chunk)
@@ -128,6 +127,13 @@ final class SpectrogramEngine: @unchecked Sendable {
     private var slidingPos = 0  // next write index = oldest sample
     private var untilColumn = 0
     private var current = SpectrumSnapshot()
+    private var paused = false
+
+    private struct Commands {
+        var config: SpectrogramConfig?
+        var clear = false
+        var active = true
+    }
 
     init(feed: StereoFeed, config: SpectrogramConfig = .init()) {
         self.feed = feed
@@ -150,7 +156,18 @@ final class SpectrogramEngine: @unchecked Sendable {
     /// Applied on the next drain; clears the history. Rows can't change after init.
     func configure(_ config: SpectrogramConfig) {
         precondition(config.rows == columns.rows && SpectrogramConfig.fftSizes.contains(config.fftSize))
-        pending.withLock { $0 = config }
+        commands.withLock { $0.config = config }
+    }
+
+    /// Clears the history (key C).
+    func clear() {
+        commands.withLock { $0.clear = true }
+    }
+
+    /// While inactive (panel hidden) samples are skipped without any FFT work; showing again
+    /// resyncs and starts a fresh history.
+    func setActive(_ active: Bool) {
+        commands.withLock { $0.active = active }
     }
 
     func start() {
@@ -174,13 +191,25 @@ final class SpectrogramEngine: @unchecked Sendable {
 
     /// Reads everything new from the feed and pushes any finished columns.
     func drain() {
-        if let next = pending.withLock({ p in defer { p = nil }; return p }), next != config {
+        let command = commands.withLock { c in
+            defer { (c.config, c.clear) = (nil, false) }
+            return c
+        }
+        guard command.active else {
+            cursor = feed.position()
+            paused = true
+            return
+        }
+        if let next = command.config, next != config {
             if next.fftSize != config.fftSize { analyzer = SpectrumAnalyzer(fftSize: next.fftSize) }
             config = next
             map = Self.rowMap(next)
             cursor = feed.position()
             restart()
+        } else if command.clear || paused {
+            restart()
         }
+        paused = false
         while true {
             let (n, overrun) = feed.read(cursor: &cursor, l: l, r: r, max: Self.chunk)
             if overrun { current.overruns += 1 }
@@ -192,7 +221,7 @@ final class SpectrogramEngine: @unchecked Sendable {
 
     private static func rowMap(_ c: SpectrogramConfig) -> RowMap {
         RowMap(fftSize: c.fftSize, fMin: c.range.bounds.min, fMax: c.range.bounds.max, rows: c.rows,
-               sampleRate: sampleRate, tiltDBPerOct: c.tilt)
+               sampleRate: sampleRate)
     }
 
     private func restart() {

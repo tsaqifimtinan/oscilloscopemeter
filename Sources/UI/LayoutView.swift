@@ -100,7 +100,12 @@ struct LayoutView: View {
         GeometryReader { geo in
             VStack(spacing: 0) {
                 if prefs.panels.contains(.spectrogram) {
-                    SpectrogramView(engine: capture.spectrogram)
+                    SpectrogramView(engine: capture.spectrogram, settings: prefs.spectrogram)
+                        .overlay {
+                            if prefs.spectrogram.labels && !settings.clean {
+                                FrequencyLabels(range: prefs.spectrogram.range)
+                            }
+                        }
                         .frame(height: prefs.panels.contains(.scope) ? geo.size.height * 0.6 : geo.size.height)
                 }
                 if prefs.panels.contains(.scope) { scope(prefs, date: date) }

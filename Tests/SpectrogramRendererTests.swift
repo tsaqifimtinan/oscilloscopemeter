@@ -44,7 +44,7 @@ import Testing
 @MainActor @Test func newestColumnIsAtTheRightAndRowZeroAtTheBottom() {
     let queue = ColumnQueue(rows: 512)
     let renderer = SpectrogramRenderer(queue: queue)
-    (renderer.floor, renderer.ceiling) = (-120, 0)  // t = stored value
+    (renderer.floor, renderer.ceiling, renderer.tilt) = (-120, 0, 0)  // t = stored value
     var column = [UInt8](repeating: 0, count: 512)
     column[290] = 255
     for _ in 0..<10 { queue.push(column) }
@@ -61,4 +61,22 @@ import Testing
 
     queue.clear()
     #expect(render(renderer, rows: 512)(1022, 511 - 290) == black)  // clear wipes the picture
+}
+
+@MainActor @Test func tiltRestylesInTheShader() {
+    let queue = ColumnQueue(rows: 512)
+    let renderer = SpectrogramRenderer(queue: queue)
+    // Stored -60 dBFS everywhere (quantizes to -59.76). With +3 dB/oct: 250 Hz ≈ -65.8, 4 kHz ≈ -53.8.
+    (renderer.floor, renderer.ceiling, renderer.tilt) = (-65, -55, 3)
+    queue.push([UInt8](repeating: 128, count: 512))
+    let pixel = render(renderer, rows: 512)
+    let m = RowMap(fftSize: 4096, fMin: 20, fMax: 20_000, rows: 512, sampleRate: 48_000)
+    let y = { (f: Double) in 511 - Int(m.row(for: f).rounded()) }
+    #expect(pixel(1023, y(4000)) == [255, 255, 255])  // above the ceiling
+    #expect(pixel(1023, y(250)) == [0, 0, 0])  // below the floor
+    let mid = pixel(1023, y(1000))
+    #expect(mid != [255, 255, 255] && mid != [0, 0, 0])
+    renderer.tilt = 0  // whole history restyles: 4 kHz drops back between floor and ceiling
+    let flat = render(renderer, rows: 512)(1023, y(4000))
+    #expect(zip(flat, mid).allSatisfy { abs(Int($0) - Int($1)) <= 2 })  // 1 kHz row center is ~0.1 dB off 1000 Hz
 }
