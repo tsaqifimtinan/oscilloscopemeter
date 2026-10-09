@@ -72,16 +72,17 @@ struct ContentView: View {
 
     private var levels: some View {
         TimelineView(.periodic(from: .now, by: 0.1)) { _ in
-            Text(readout(capture.meters.snapshot))
+            Text(readout(capture.meters.snapshot, capture.spectrogram.snapshot))
                 .font(.system(.caption, design: .monospaced))
                 .foregroundStyle(.secondary)
         }
     }
 
-    private func readout(_ m: MeterSnapshot) -> String {
+    private func readout(_ m: MeterSnapshot, _ s: SpectrumSnapshot) -> String {
         let text = String(format: "L %6.1f  R %6.1f dBFS", m.rmsL, m.rmsR)
         #if DEBUG
         return text + "  · overruns \(m.overruns)"
+            + String(format: "  · spec %.0f Hz %.1f dB ov %d", s.peakHz, s.peakDB, s.overruns)
         #else
         return text
         #endif

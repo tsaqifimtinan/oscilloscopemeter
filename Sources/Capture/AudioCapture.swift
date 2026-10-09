@@ -14,12 +14,14 @@ final class AudioCapture {
     /// Captured stereo audio; persists across start/stop.
     let feed = StereoFeed()
     let meters: MeterEngine
+    let spectrogram: SpectrogramEngine
     private var stream: SCStream?
     private var output: StreamOutput?
 
     init() {
         state = CGPreflightScreenCaptureAccess() ? .granted : .notGranted
         meters = MeterEngine(feed: feed)
+        spectrogram = SpectrogramEngine(feed: feed)
     }
 
     func requestPermission() {
@@ -59,6 +61,7 @@ final class AudioCapture {
             self.stream = stream
             self.output = output
             meters.start()
+            spectrogram.start()
             state = .capturing
         } catch {
             state = .error(error.localizedDescription)
@@ -72,6 +75,7 @@ final class AudioCapture {
         self.stream = nil
         output = nil
         meters.stop()
+        spectrogram.stop()
         try? await stream.stopCapture()
         state = .granted
     }
@@ -81,6 +85,7 @@ final class AudioCapture {
         self.stream = nil
         output = nil
         meters.stop()
+        spectrogram.stop()
         state = .error(message)
         try? await stream?.stopCapture()  // no-op if the stream already stopped itself
     }

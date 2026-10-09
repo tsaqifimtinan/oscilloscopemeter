@@ -76,3 +76,4 @@ Scope holds a `ProcessInfo` activity so App Nap doesn't throttle it while it's i
 - **True peak:** uses a Hann-windowed-sinc interpolator, not the BS.1770-4 Annex 2 coefficient table. It is within ~0.1 dB below ~16 kHz but isn't conformance-grade near Nyquist.
 - **Loudness tests:** Integrated and LRA are checked against synthetic signals (see `Tests/LoudnessTests.swift`). They have not yet been run against the EBU Tech 3341/3342 conformance files.
 - **Scope trigger:** no holdoff, hysteresis or Single mode.
+- **Spectrogram allocations:** checked by hooking `malloc_logger` around `SpectrogramEngine.drain()` for 60 s of a 1 kHz tone (6,337 columns). An optimized build makes 0 allocations. A Debug (`-Onone`) build makes one transient malloc/free per Swift `for` iteration, even in an empty loop, so that count is a debug-build artifact.
